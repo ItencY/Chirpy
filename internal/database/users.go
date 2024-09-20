@@ -1,6 +1,8 @@
 package database
 
-import "errors"
+import (
+	"errors"
+)
 
 type User struct {
 	ID             int    `json:"id"`
@@ -63,4 +65,27 @@ func (db *DB) GetUserByEmail(email string) (User, error) {
 	}
 
 	return User{}, ErrNotExist
+}
+
+func (db *DB) UpdateUser(id int, email, hashedPassword string) (User, error) {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return User{}, err
+	}
+
+	user, ok := dbStructure.Users[id]
+	if !ok {
+		return User{}, ErrNotExist
+	}
+
+	user.Email = email
+	user.HashedPassword = hashedPassword
+	dbStructure.Users[id] = user
+
+	err = db.writeDB(dbStructure)
+	if err != nil {
+		return User{}, err
+	}
+
+	return user, nil
 }
