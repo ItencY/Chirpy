@@ -53,6 +53,7 @@ func main() {
 	mux.HandleFunc("POST /api/chirps", cfg.handleCreateChirp)
 	mux.HandleFunc("GET /api/chirps", cfg.handlerGetAllChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", cfg.handlerGetChirp)
+	mux.HandleFunc("POST /api/login", cfg.handlerLogin)
 
 	server := &http.Server{
 		Handler: mux,
