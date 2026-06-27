@@ -16,6 +16,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	platform       string
+	jwt            string
 }
 
 func main() {
@@ -24,6 +25,10 @@ func main() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
+	}
+	jwtToken := os.Getenv("JWT")
+	if jwtToken == "" {
+		log.Fatal("JWT token not set")
 	}
 	platform := os.Getenv("PLATFORM")
 	if platform == "" {
