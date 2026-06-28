@@ -6,17 +6,18 @@ import (
 	"time"
 
 	"github.com/itency/Chirpy/internal/auth"
+	"github.com/itency/Chirpy/internal/database"
 )
 
 type LoginRequest struct {
-	Password         string `json:"password"`
-	Email            string `json:"email"`
-	ExpiresInSeconds int    `json:"expires_in_seconds"`
+	Password string `json:"password"`
+	Email    string `json:"email"`
 }
 
 type LoginResponse struct {
 	User
-	Token string `json:"token"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +28,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "failed to decode")
 		return
 	}
-	duration := determineExpiration(req.ExpiresInSeconds)
+	duration := time.Hour
 	ctx := r.Context()
 	userEmail, err := cfg.db.GetUserByEmail(ctx, req.Email)
 	if err != nil {
@@ -48,23 +49,21 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, "failed to create jwt")
 		return
 	}
+	makeRefreshToken := auth.MakeRefreshToken()
+	refreshToken, err := cfg.db.CreateRefreshToken(ctx, database.CreateRefreshTokenParams{
+		Token:     makeRefreshToken,
+		UserID:    userEmail.ID,
+		ExpiresAt: time.Now().Add(time.Hour * 24 * 60),
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "failed to save refresh token")
+		return
+	}
 	user := User{
 		ID:        userEmail.ID,
 		CreatedAt: userEmail.CreatedAt,
 		UpdatedAt: userEmail.UpdatedAt,
 		Email:     userEmail.Email,
 	}
-	respondWithJSON(w, http.StatusOK, LoginResponse{User: user, Token: token})
-}
-
-func determineExpiration(reqExpires int) time.Duration {
-	maxDuration := 1 * time.Hour
-	if reqExpires <= 0 {
-		return maxDuration
-	}
-	reqDuration := time.Duration(reqExpires) * time.Second
-	if reqDuration > maxDuration {
-		return maxDuration
-	}
-	return reqDuration
+	respondWithJSON(w, http.StatusOK, LoginResponse{User: user, Token: token, RefreshToken: refreshToken.Token})
 }
