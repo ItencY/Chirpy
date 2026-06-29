@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/itency/Chirpy/internal/auth"
 )
 
 type WebhookRequest struct {
@@ -17,9 +18,18 @@ type data struct {
 }
 
 func (cfg *apiConfig) handlerWebhooks(w http.ResponseWriter, r *http.Request) {
+	apiKey, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "failed to get api key")
+		return
+	}
+	if cfg.polkaKey != apiKey {
+		respondWithError(w, http.StatusUnauthorized, "incorect api key")
+		return
+	}
 	var req WebhookRequest
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&req)
+	err = decoder.Decode(&req)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "failed to decode")
 		return
